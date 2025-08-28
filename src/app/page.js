@@ -11,6 +11,7 @@ import Card from '@mui/material/Card';
 import CardContent from '@mui/material/CardContent';
 import CircularProgress from '@mui/material/CircularProgress';
 import Link from '@mui/material/Link';
+import Alert from '@mui/material/Alert';
 
 // Custom MUI theme for Iron Man HUD aesthetic
 const theme = createTheme({
@@ -20,7 +21,7 @@ const theme = createTheme({
       default: 'linear-gradient(to bottom, #1a202c, #2d3748)',
     },
     primary: {
-      main: '#42A5F5', // Blue glow for HUD
+      main: '#42A5F5',
       light: '#90CAF9',
     },
     text: {
@@ -77,10 +78,10 @@ const theme = createTheme({
 export default function Home() {
   const [query, setQuery] = useState('');
   const [response, setResponse] = useState('');
+  const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [history, setHistory] = useState([]);
 
-  // Mock F.R.I.D.A.Y. responses
   const fridayGreetings = [
     'Hey boss, systems are hot and ready. What’s the play?',
     'F.R.I.D.A.Y. online. Let’s make some sparks fly.',
@@ -91,23 +92,33 @@ export default function Home() {
     return fridayGreetings[Math.floor(Math.random() * fridayGreetings.length)];
   };
 
-  // Simulate Grok API call (replace with xAI API)
   const fetchGrokResponse = async (input) => {
     try {
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      return `Grok: Query "${input}" received. Configure xAI API at https://x.ai/api for real responses.`;
+      const response = await fetch('/api/grok', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ input }),
+      });
+      const data = await response.json();
+      if (data.error) throw new Error(data.error);
+      return `Grok: ${data.response}`;
     } catch (error) {
-      return 'Grok: Error connecting to xAI API.';
+      throw new Error(`Grok error: ${error.message}`);
     }
   };
 
-  // Simulate Friday (ChatGPT) API call (replace with OpenAI API)
   const fetchFridayResponse = async (input) => {
     try {
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      return `F.R.I.D.A.Y.: "${input}"? Working on it, boss. Set up OpenAI API for my full Stark-level wit.`;
+      const response = await fetch('/api/friday', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ input }),
+      });
+      const data = await response.json();
+      if (data.error) throw new Error(data.error);
+      return `F.R.I.D.A.Y.: ${data.response}`;
     } catch (error) {
-      return 'F.R.I.D.A.Y.: Systems offline. Check OpenAI API setup.';
+      throw new Error(`Friday error: ${error.message}`);
     }
   };
 
@@ -115,13 +126,19 @@ export default function Home() {
     e.preventDefault();
     if (!query.trim()) return;
     setIsLoading(true);
-    const grokResponse = await fetchGrokResponse(query);
-    const fridayResponse = await fetchFridayResponse(query);
-    const combinedResponse = `${grokResponse}\n\n${fridayResponse}`;
-    setResponse(combinedResponse);
-    setHistory([{ query, response: combinedResponse, timestamp: new Date() }, ...history]);
-    setIsLoading(false);
-    setQuery('');
+    setError('');
+    try {
+      const grokResponse = await fetchGrokResponse(query);
+      const fridayResponse = await fetchFridayResponse(query);
+      const combinedResponse = `${grokResponse}\n\n${fridayResponse}`;
+      setResponse(combinedResponse);
+      setHistory([{ query, response: combinedResponse, timestamp: new Date() }, ...history]);
+    } catch (error) {
+      setError(error.message);
+    } finally {
+      setIsLoading(false);
+      setQuery('');
+    }
   };
 
   return (
@@ -165,6 +182,11 @@ export default function Home() {
                 {isLoading ? <CircularProgress size={24} color="inherit" /> : 'Submit Query'}
               </Button>
             </Box>
+            {error && (
+              <Alert severity="error" sx={{ mb: 3 }}>
+                {error}
+              </Alert>
+            )}
             {response && (
               <Box
                 sx={{
@@ -194,6 +216,11 @@ export default function Home() {
                       bgcolor: 'rgba(0, 0, 0, 0.3)',
                       borderRadius: 1,
                       border: '1px solid rgba(66, 153, 225, 0.3)',
+                      transition: 'transform 0.2s, box-shadow 0.2s',
+                      '&:hover': {
+                        transform: 'translateY(-4px)',
+                        boxShadow: '0 0 15px rgba(66, 153, 225, 0.7)',
+                      },
                     }}
                   >
                     <Typography variant="body2" sx={{ fontWeight: 500 }}>
